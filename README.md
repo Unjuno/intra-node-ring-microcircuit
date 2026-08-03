@@ -1,42 +1,72 @@
 # Intra-Node Ring Microcircuit
 
-A research prototype that replaces each scalar hidden unit in a fully connected network with a small recurrent microcircuit. Each macro-unit receives the ordinary fully connected input, distributes it over five internal scalar subnodes, performs shared recurrent updates, and reads the internal state back to one scalar macro-output.
+An exploratory research repository testing whether ordinary scalar hidden units benefit from internal microstructure. The project began with five-subnode recurrent ring cells, but the evidence now points away from ring topology and toward a simpler learned scalar micro-activation.
 
-> **Status: exploratory and falsifiable.** The current evidence does **not** establish general superiority over MLPs, ring-specific superiority, computational efficiency, or world-first novelty.
+> **Status: completed exploratory study.** The tested ring topology did not show a robust advantage. A smaller learned scalar state-update activation improved two tasks under closely matched parameter budgets, but general superiority and novelty are not established.
 
-## Current 10-seed evidence
+## Main conclusion
 
-The confirmatory replication matches trainable FP32 parameter counts for each dataset and compares:
+The experiments separated four hypotheses:
 
-- `MLP`: two-hidden-layer fully connected baseline;
-- `MicroNoEdges`: the same five-subnode macro-unit without internal edges;
-- `MicroRing`: the five-subnode macro-unit with a fixed ring and three shared recurrent steps.
+1. ring topology;
+2. recurrence depth;
+3. multiple internal subnodes;
+4. a learned nonlinear transformation inside each scalar unit.
 
-| Dataset | MLP | MicroNoEdges | MicroRing | MicroRing − MLP, 95% CI |
+The first three were not required for the strongest positive result. A dedicated scalar micro-activation with one learned update was sufficient.
+
+### Ten-seed follow-up at approximately 30,000 trainable parameters
+
+| Dataset | MLP | Fixed `GELU(tanh(z))` | ScalarMicro T=1 | ScalarMicro T=3 |
 |---|---:|---:|---:|---:|
-| Breast cancer | 95.79% | 98.07% | 97.98% | +2.19 pp `[+1.40,+2.99]` |
-| Digits | 96.58% | 96.06% | 96.47% | −0.11 pp `[−0.90,+0.67]` |
-| Synthetic ring teacher | 85.72% | 84.50% | 84.51% | −1.21 pp `[−1.94,−0.48]` |
-| Wine | 96.94% | 90.56% | 90.28% | −6.67 pp `[−9.51,−3.83]` |
+| Digits | 96.67% | 97.72% | **98.28%** | 98.31% |
+| Synthetic cyclic teacher | 85.89% | 86.17% | **87.22%** | 86.58% |
 
-The breast-cancer gain is evidence for the **micro-unit parameterization**, not for the ring: `MicroRing − MicroNoEdges = −0.09 pp`, with a confidence interval spanning zero. On Digits, the ring improves over the no-edge micro-unit by `+0.42 pp`, but this ring-specific effect does not survive correction across datasets.
+Paired results for `ScalarMicro T=1`:
 
-## What is supported
+- Digits versus MLP: `+1.61 pp`, 95% CI `[+1.19,+2.03]`, exact sign-flip `p=0.001953`, wins `10/10`.
+- Synthetic task versus MLP: `+1.33 pp`, 95% CI `[+0.75,+1.90]`, exact sign-flip `p=0.001953`, wins `10/10`.
+- Digits versus the fixed composite activation: `+0.56 pp`, 95% CI `[+0.26,+0.85]`.
+- Synthetic task versus the fixed composite activation: `+1.05 pp`, 95% CI `[+0.31,+1.79]`.
 
-- The architecture is implementable and trainable on CPU.
-- Equal trainable-parameter budgets can be enforced exactly or nearly exactly.
-- Internal recurrence can alter results relative to the same micro-unit with edges disabled.
-- Effects are strongly task-dependent.
+One update and three updates were indistinguishable on Digits. On the synthetic task, one update was significantly better than three. More recurrence is therefore not the explanation.
 
-## What is not supported
+## What happened to the ring hypothesis?
 
-- General accuracy superiority over ordinary MLPs.
-- A ring-specific advantage over other internal topologies.
-- Increased effective representation dimension in every task.
-- Better robustness, latency, or FLOP efficiency.
-- Causal interpretability or anomaly localization; those remain testable hypotheses.
+The primary four-dataset replication compared:
 
-## Reproduce the primary experiment
+- `MLP`;
+- `MicroNoEdges`, a five-subnode unit without internal edges;
+- `MicroRing`, the same unit with ring communication.
+
+Results were heterogeneous. The ring did not show a robust advantage over the no-edge control, and a topology screen did not identify Ring as uniquely superior to Chain, Star, Complete, or Random graphs.
+
+At a larger fixed budget on Digits, ten paired seeds gave:
+
+- `k5_no_edges - MLP`: `+1.22 pp`;
+- `k5_ring - k5_no_edges`: `-0.06 pp`, 95% CI spanning zero.
+
+Thus the positive result is not evidence for ring topology.
+
+## Supported statements
+
+- The ring and no-edge micro-unit implementations are trainable and reproducible on CPU.
+- Ring-specific superiority was not established.
+- Multiple internal subnodes were not necessary for the strongest positive result.
+- A learned scalar state-update activation improved Digits and the controlled synthetic task under closely matched trainable-parameter budgets.
+- The learned activation is slower than a standard MLP.
+- Effects remain task-dependent: Breast Cancer and Wine did not provide confirmatory generalization.
+
+## Unsupported statements
+
+- “Ring neurons outperform MLPs.”
+- “Internal microcircuits generally improve neural networks.”
+- “The method is compute-efficient, robust, causal, biologically faithful, or world-first.”
+- “The positive result establishes novelty over adaptive activation-function research.”
+
+## Reproduce
+
+Primary ring/no-edge experiment:
 
 ```bash
 python -m venv .venv
@@ -45,19 +75,30 @@ pip install -r requirements.txt
 python experiments/reproduce_primary.py --outdir results/local-primary
 ```
 
-The coordinator launches each training run in a separate process because some CPU numerical-library builds delay interpreter shutdown after repeated PyTorch/scikit-learn jobs.
+Scalar micro-activation follow-up:
+
+```bash
+python experiments/reproduce_scalar_followup.py \
+  --outdir results/local-scalar-followup
+```
 
 ## Repository map
 
 ```text
-experiments/                 exact CPU experiment implementation
-results/2026-08-03/          complete 10-seed aggregate results
-docs/CLAIMS.md               permitted and prohibited claims
-docs/EVIDENCE_2026-08-03.md  statistical interpretation
-docs/EXPERIMENT_PLAN.md      next confirmatory tests
-docs/IMPACT.md               what would constitute meaningful impact
+experiments/core.py                         shared datasets, models, and metrics
+experiments/reproduce_primary.py            primary four-dataset replication
+experiments/run_scalar_control.py            scalar activation worker
+experiments/reproduce_scalar_followup.py     ten-seed mechanism follow-up
+docs/EVIDENCE_2026-08-03.md                 primary evidence report
+docs/FOLLOWUP_2026-08-03.md                 mechanism isolation and stopping report
+docs/CLAIMS.md                              public claim boundary
+results/2026-08-03/                         aggregate statistics
 ```
+
+## Research status
+
+The original ring question has reached a stopping point. The scientifically justified next project, if pursued, is comparison of the scalar micro-activation against modern adaptive and learnable activation functions. It is not further tuning of ring topologies.
 
 ## License
 
-Code is licensed under Apache-2.0. Original documentation and figures may be reused under the repository license unless a file states otherwise. Third-party datasets retain their original terms.
+Code is licensed under Apache-2.0. Third-party datasets retain their original terms.
