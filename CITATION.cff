@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite the repository release and commit."
+title: "Intra-Node Ring Microcircuit"
+type: software
+authors:
+  - family-names: "Unjuno"
+repository-code: "https://github.com/Unjuno/intra-node-ring-microcircuit"
+license: Apache-2.0
+version: 0.1.0
+date-released: "2026-08-03"
+abstract: >-
+  An exploratory implementation and benchmark of fully connected neural networks
+  whose scalar hidden units are replaced by recurrent ring microcircuits under
+  matched parameter-bit budgets.
+keywords:
+  - neural networks
+  - multilayer perceptron
+  - recurrent microcircuit
+  - structured neuron
+  - parameter efficiency
